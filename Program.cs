@@ -12,6 +12,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IPanTiltService,PanTiltService>();   
     }).Build();
 
+
+//test commit
 Console.WriteLine("Initialising...");
 double hWidth=320;
 double vHeight=320;
