@@ -18,7 +18,7 @@ Console.WriteLine("Initialising...");
 double hWidth=320;
 double vHeight=320;
 double panPos=60;
-double tiltPos=90;
+double tiltPos=150;
 var panTiltService= host.Services.GetService<IPanTiltService>();
 if (panTiltService!=null)
 {
@@ -74,7 +74,7 @@ if (panTiltService!=null)
                     double yRelPos=((double)faceMidPointY-(vHeight/2));
                     xRelPos /=(double)hWidth/2.0;
                     yRelPos /=(double)vHeight/2.0;
-                    Console.WriteLine($"Rel X: {xRelPos} Rel Y: {yRelPos}");
+                    // Console.WriteLine($"Rel X: {xRelPos} Rel Y: {yRelPos}");
                     if (Math.Abs(xRelPos-lastRelXPos)>0.05)
                     {
                         xRelPos*=5;
@@ -86,10 +86,11 @@ if (panTiltService!=null)
                     {
                         yRelPos*=5;
                         tiltPos+=yRelPos;
-                        panTiltService.VPos(120+tiltPos);
+                        panTiltService.VPos(tiltPos);
+                        Console.WriteLine($"Tilt change: {tiltPos}");
                     }     
 
-                    Console.WriteLine($"Pan Pos: {panPos} Tilt Pos {120+tiltPos}");
+                    // Console.WriteLine($"Pan Pos: {panPos} Tilt Pos {120+tiltPos}");
                     using(var detectedFaceImage = new Mat(srcImage, faceRect))
                     {
                         Cv2.Rectangle(srcImage, faceRect, color, 3);
