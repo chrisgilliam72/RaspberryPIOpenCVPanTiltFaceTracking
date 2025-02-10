@@ -5,7 +5,7 @@ using OpenCvSharp;
 using PanTiltHatLib;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-// To get this to work you need to enable legacy stack .
+// For legacy stack do this .
 // edit /boot/firmware/config.txt
 // comment out camera_auto_detect=1
 //At the end in the section under all add the following
@@ -34,6 +34,11 @@ if (panTiltService!=null)
     var cascade = new CascadeClassifier(@"/home/chris/Dev/OpenCVSharpFaceTrack/Data/haarcascade_frontalface_alt.xml");
 
     var color = Scalar.FromRgb(0, 255, 0);
+    // To use libcamera install gstreamer and use this.
+    /*   using var capture = new VideoCapture(
+        "libcamerasrc ! video/x-raw, width=(int)1080,height=(int)720, framerate=(fraction10/1) ! videoconvert ! appsink", 
+        VideoCaptureAPIs.GSTREAMER
+    );*/
     using(VideoCapture capture = new VideoCapture(0))
     using(Window window = new Window("Webcam"))
     using(Mat srcImage = new Mat())
