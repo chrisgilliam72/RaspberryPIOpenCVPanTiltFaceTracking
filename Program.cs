@@ -5,7 +5,12 @@ using OpenCvSharp;
 using PanTiltHatLib;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-
+// To get this to work you need to enable legacy stack .
+// edit /boot/firmware/config.txt
+// comment out camera_auto_detect=1
+//At the end in the section under all add the following
+//gpu_mem=128
+//start_x=1
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostcontext, services) =>
     {
