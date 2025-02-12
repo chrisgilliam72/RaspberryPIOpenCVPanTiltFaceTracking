@@ -34,11 +34,11 @@ if (panTiltService!=null)
 
     var color = Scalar.FromRgb(0, 255, 0);
     // To use libcamera install gstreamer and use this.
-    /*   using var capture = new VideoCapture(
+        using var capture = new VideoCapture(
         "libcamerasrc ! video/x-raw, width=(int)1080,height=(int)720, framerate=(fraction10/1) ! videoconvert ! appsink", 
         VideoCaptureAPIs.GSTREAMER
-    );*/
-    using(VideoCapture capture = new VideoCapture(0))
+    );
+    // using(VideoCapture capture = new VideoCapture(0))
     using(Window window = new Window("Webcam"))
     using(Mat srcImage = new Mat())
     using(var grayImage = new Mat())
