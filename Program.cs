@@ -22,16 +22,15 @@ using IHost host = Host.CreateDefaultBuilder(args)
 Console.WriteLine("Initialising...");
 double hWidth=320;
 double vHeight=320;
-double panPos=60;
-double tiltPos=150;
+
 var panTiltService= host.Services.GetService<IPanTiltService>();
 if (panTiltService!=null)
 {
     panTiltService.Init(0x40,60);
     panTiltService.Reset();
-    panTiltService.VPos(150);
-    panTiltService.HPos(60);
-    var cascade = new CascadeClassifier(@"/home/chris/Dev/OpenCVSharpFaceTrack/Data/haarcascade_frontalface_alt.xml");
+    double panPos=panTiltService.CurrentHPosition();
+    double tiltPos=panTiltService.CurrentVPosition();
+    var cascade = new CascadeClassifier(@"./Data/haarcascade_frontalface_alt.xml");
 
     var color = Scalar.FromRgb(0, 255, 0);
     // To use libcamera install gstreamer and use this.
