@@ -20,14 +20,14 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 //test commit
 Console.WriteLine("Initialising...");
-double hWidth=320;
-double vHeight=320;
+double hWidth=640;
+double vHeight=480;
 
 var panTiltService= host.Services.GetService<IPanTiltService>();
 if (panTiltService!=null)
 {
     panTiltService.Init(0x40,60);
-    panTiltService.Reset();
+    panTiltService.MoveTo(130,60);
     double panPos=panTiltService.CurrentHPosition();
     double tiltPos=panTiltService.CurrentVPosition();
     var cascade = new CascadeClassifier(@"./Data/haarcascade_frontalface_alt.xml");
@@ -35,7 +35,7 @@ if (panTiltService!=null)
     var color = Scalar.FromRgb(0, 255, 0);
     // To use libcamera install gstreamer and use this.
         using var capture = new VideoCapture(
-        "libcamerasrc ! video/x-raw, width=(int)1080,height=(int)720, framerate=(fraction10/1) ! videoconvert ! appsink", 
+        "libcamerasrc ! video/x-raw, width=(int)640,height=(int)480, ! videoconvert ! appsink", 
         VideoCaptureAPIs.GSTREAMER
     );
     // using(VideoCapture capture = new VideoCapture(0))
@@ -56,9 +56,7 @@ if (panTiltService!=null)
         {
             int faceMidPointX=0;
             int faceMidPointY=0;
-            
-
-            
+                        
             count++;
 
             if (capture.Read(srcImage))
@@ -113,7 +111,7 @@ if (panTiltService!=null)
                     // Console.WriteLine($"Pan: {camPan} Tilt: {camTilt}");
                 }
 
-                Cv2.Resize(srcImage,srcImage, new Size(540,300));
+                // Cv2.Resize(srcImage,srcImage, new Size(640,480));
                 window.ShowImage(srcImage);
                 int key = Cv2.WaitKey(1);
                 if (key == 27)
