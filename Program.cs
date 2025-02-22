@@ -5,6 +5,7 @@ using OpenCvSharp;
 using PanTiltHatLib;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 // For legacy stack do this .
 // edit /boot/firmware/config.txt
 // comment out camera_auto_detect=1
@@ -15,19 +16,22 @@ using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostcontext, services) =>
     {
         services.AddSingleton<IPanTiltService,PanTiltService>();   
+        services.AddLogging(configure => configure.AddConsole()); // Add console logging
     }).Build();
 
 
 //test commit
-Console.WriteLine("Initialising...");
+
 double hWidth=640;
 double vHeight=480;
 
 var panTiltService= host.Services.GetService<IPanTiltService>();
+var logger = host.Services.GetRequiredService<ILogger<Program>>(); // Get logger instance
+logger.LogInformation("Initialising...");
 if (panTiltService!=null)
 {
     panTiltService.Init(0x40,60);
-    panTiltService.MoveTo(130,60);
+    panTiltService.MoveTo(130,70);
     double panPos=panTiltService.CurrentHPosition();
     double tiltPos=panTiltService.CurrentVPosition();
     var cascade = new CascadeClassifier(@"./Data/haarcascade_frontalface_alt.xml");
@@ -68,8 +72,10 @@ if (panTiltService!=null)
 
                 var faces = cascade.DetectMultiScale(
                     image: grayImage,
-                    minSize: new Size(10, 10)
-                    );
+                    scaleFactor: 1.1,   // Slightly reduce image size each pass
+                    minNeighbors: 5,    // Filter out false positives
+                    minSize: new Size(30, 30)  // Ignore very small faces
+                );
                 
                 if (faces.Count()>0)
                 {
@@ -94,7 +100,6 @@ if (panTiltService!=null)
                         yRelPos*=5;
                         tiltPos+=yRelPos;
                         panTiltService.VPos(tiltPos);
-                        Console.WriteLine($"Tilt change: {tiltPos}");
                     }     
 
                     // Console.WriteLine($"Pan Pos: {panPos} Tilt Pos {120+tiltPos}");
@@ -120,7 +125,7 @@ if (panTiltService!=null)
                 }                                                                       
             }
             else
-            Console.WriteLine("Error reading frame");
+                logger.LogError("Error reading frame");
         }
     }
 }
