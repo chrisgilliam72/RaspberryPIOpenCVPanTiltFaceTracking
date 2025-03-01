@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 //At the end in the section under all add the following
 //gpu_mem=128
 //start_x=1
+
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostcontext, services) =>
     {
@@ -24,14 +25,15 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 double hWidth=640;
 double vHeight=480;
-
+int initX=130;
+int initY=65;
 var panTiltService= host.Services.GetService<IPanTiltService>();
 var logger = host.Services.GetRequiredService<ILogger<Program>>(); // Get logger instance
 logger.LogInformation("Initialising...");
 if (panTiltService!=null)
 {
     panTiltService.Init(0x40,60);
-    panTiltService.MoveTo(130,70);
+    panTiltService.MoveTo(initX,initY);
     double panPos=panTiltService.CurrentHPosition();
     double tiltPos=panTiltService.CurrentVPosition();
     var cascade = new CascadeClassifier(@"./Data/haarcascade_frontalface_alt.xml");
@@ -53,9 +55,10 @@ if (panTiltService!=null)
         double lastY=0;
         double lastRelXPos=0;
         double lastRelYPos=0;
+        int framesSinceLastDetection=0;
         capture.Set(VideoCaptureProperties.FrameWidth, hWidth);
         capture.Set(VideoCaptureProperties.FrameHeight, vHeight);
-        Thread.Sleep(2000);
+        Thread.Sleep(1000);
         while (capture.IsOpened())
         {
             int faceMidPointX=0;
@@ -79,6 +82,7 @@ if (panTiltService!=null)
                 
                 if (faces.Count()>0)
                 {
+                    framesSinceLastDetection=0;
                     var faceRect =faces.FirstOrDefault();
                     faceMidPointX=faceRect.X+(faceRect.Width/2);
                     faceMidPointY=faceRect.Y+(faceRect.Height/2);
@@ -115,7 +119,22 @@ if (panTiltService!=null)
                     lastRelYPos=yRelPos;
                     // Console.WriteLine($"Pan: {camPan} Tilt: {camTilt}");
                 }
-
+                else
+                {
+                    if (framesSinceLastDetection>50)
+                    {
+                        panTiltService.MoveTo(initX,initY);
+                        panPos=panTiltService.CurrentHPosition();
+                        tiltPos=panTiltService.CurrentVPosition();
+                        lastX=0;
+                        lastY=0;
+                        lastRelXPos=0;
+                        lastRelYPos=0;
+                        framesSinceLastDetection=0;
+                    }
+                    else
+                        framesSinceLastDetection++;
+                }
                 // Cv2.Resize(srcImage,srcImage, new Size(640,480));
                 window.ShowImage(srcImage);
                 int key = Cv2.WaitKey(1);
