@@ -13,6 +13,11 @@ using Microsoft.Extensions.Logging;
 //gpu_mem=128
 //start_x=1
 
+const int FRAME_W = 320;
+const int FRAME_H = 200;
+int cam_pan = 130;
+int cam_tilt= 65;
+
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostcontext, services) =>
     {
@@ -23,120 +28,84 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 //test commit
 
-double hWidth=640;
-double vHeight=480;
-int initX=130;
-int initY=65;
 var panTiltService= host.Services.GetService<IPanTiltService>();
 var logger = host.Services.GetRequiredService<ILogger<Program>>(); // Get logger instance
 logger.LogInformation("Initialising...");
 if (panTiltService!=null)
 {
     panTiltService.Init(0x40,60);
-    panTiltService.MoveTo(initX,initY);
-    double panPos=panTiltService.CurrentHPosition();
-    double tiltPos=panTiltService.CurrentVPosition();
-    var cascade = new CascadeClassifier(@"./Data/haarcascade_frontalface_alt.xml");
+    panTiltService.MoveTo(cam_pan,cam_tilt);
 
-    var color = Scalar.FromRgb(0, 255, 0);
+    var cascade = new CascadeClassifier(@"./Data/lbpcascade_frontalface.xml");
+
+
     // To use libcamera install gstreamer and use this.
-        using var capture = new VideoCapture(
-        "libcamerasrc ! video/x-raw, width=(int)640,height=(int)480, ! videoconvert ! appsink", 
+    using var capture = new VideoCapture(
+        "libcamerasrc ! video/x-raw,format=RGB,width=320,height=200 ! videoconvert ! appsink", 
         VideoCaptureAPIs.GSTREAMER
     );
     // using(VideoCapture capture = new VideoCapture(0))
-    using(Window window = new Window("Webcam"))
-    using(Mat srcImage = new Mat())
-    using(var grayImage = new Mat())
-    using(var detectedFaceGrayImage = new Mat())
+   
+    using(var frame = new Mat())
+    using(var gray = new Mat())
     {
-        int count = 0;
-        double lastX=0;
-        double lastY=0;
-        double lastRelXPos=0;
-        double lastRelYPos=0;
-        int framesSinceLastDetection=0;
-        capture.Set(VideoCaptureProperties.FrameWidth, hWidth);
-        capture.Set(VideoCaptureProperties.FrameHeight, vHeight);
-        Thread.Sleep(1000);
-        while (capture.IsOpened())
-        {
-            int faceMidPointX=0;
-            int faceMidPointY=0;
-                        
-            count++;
 
-            if (capture.Read(srcImage))
+        capture.Set(VideoCaptureProperties.FrameWidth, 320);
+        capture.Set(VideoCaptureProperties.FrameHeight, 200);
+        Thread.Sleep(2000);
+        while (capture.IsOpened())
+
+        {
+
+            if (capture.Read(frame))
             {
                 
-                Cv2.Flip(srcImage, srcImage, FlipMode.XY);
-                Cv2.CvtColor(srcImage, grayImage, ColorConversionCodes.BGRA2GRAY);
-                Cv2.EqualizeHist(grayImage, grayImage);
+                Cv2.Flip(frame, frame, FlipMode.XY);
+                Cv2.CvtColor(frame, gray, ColorConversionCodes.BGRA2GRAY);
+                Cv2.EqualizeHist(gray, gray);
 
                 var faces = cascade.DetectMultiScale(
-                    image: grayImage,
+                    image: frame,
                     scaleFactor: 1.1,   // Slightly reduce image size each pass
-                    minNeighbors: 5,    // Filter out false positives
-                    minSize: new Size(30, 30)  // Ignore very small faces
+                    minNeighbors: 3,    // Filter out false positives
+                    minSize: new Size(10, 10)  // Ignore very small faces
                 );
                 
                 if (faces.Count()>0)
                 {
-                    framesSinceLastDetection=0;
-                    var faceRect =faces.FirstOrDefault();
-                    faceMidPointX=faceRect.X+(faceRect.Width/2);
-                    faceMidPointY=faceRect.Y+(faceRect.Height/2);
+ 
+                    int x=faces[0].X;
+                    int y=faces[0].Y;
+                    int w=faces[0].Width;
+                    int h=faces[0].Height;
+                    logger.LogInformation($"Face found: x:{x} y:{y} w:{w} h:{h}");
+                    Cv2.Rectangle(frame, new Point(x, y), new Point(x+w, y+h),Scalar.FromRgb(0, 255, 0), 4);
 
-                    double xRelPos=((double)faceMidPointX-(hWidth/2));
-                    double yRelPos=((double)faceMidPointY-(vHeight/2));
-                    xRelPos /=(double)hWidth/2.0;
-                    yRelPos /=(double)vHeight/2.0;
-                    // Console.WriteLine($"Rel X: {xRelPos} Rel Y: {yRelPos}");
-                    if (Math.Abs(xRelPos-lastRelXPos)>0.05)
-                    {
-                        xRelPos*=5;
-                        panPos-=xRelPos;                                      
-                        panTiltService.HPos(panPos);
-                    }  
+                    //Get the centre of the face
+                    x = x+(w/2);
+                    y = y+(h/2);
+                    logger.LogInformation($"Center Pos x:{x} y:{y}");
+                    //Correct relative to centre of image
+                    var turn_x  = (float)(x - (FRAME_W/2));
+                    var turn_y  = (float)(y - (FRAME_H/2));
+                    logger.LogInformation($"Turn  x:{turn_x} y:{turn_y}");
 
-                    if (Math.Abs(yRelPos-lastRelYPos)>0.05)
-                    {
-                        yRelPos*=5;
-                        tiltPos+=yRelPos;
-                        panTiltService.VPos(tiltPos);
-                    }     
+                    //Convert to percentage offset
+                    turn_x  /= (float)(FRAME_W/2);
+                    turn_y  /= (float)(FRAME_H/2);
+                    turn_x   *= 4;
+                    turn_y   *= 4 ;
+                    logger.LogInformation($"Turn %  x:{turn_x} y:{turn_y}");
+                    cam_pan= cam_pan+ Convert.ToInt32((turn_x)*-1);
+                    cam_tilt=cam_tilt+Convert.ToInt32(turn_y);
 
-                    // Console.WriteLine($"Pan Pos: {panPos} Tilt Pos {120+tiltPos}");
-                    using(var detectedFaceImage = new Mat(srcImage, faceRect))
-                    {
-                        Cv2.Rectangle(srcImage, faceRect, color, 3);
-
-                    }
-                    
-                    lastX=panPos;
-                    lastY=tiltPos;
-                    lastRelXPos=xRelPos;
-                    lastRelYPos=yRelPos;
-                    // Console.WriteLine($"Pan: {camPan} Tilt: {camTilt}");
+                    logger.LogInformation($"Pan: {cam_pan} Tilt: {cam_tilt}");
+                    panTiltService.MoveTo(cam_pan,cam_tilt);
+  
+  
                 }
-                else
-                {
-                    if (framesSinceLastDetection>50)
-                    {
-                        panTiltService.MoveTo(initX,initY);
-                        panPos=panTiltService.CurrentHPosition();
-                        tiltPos=panTiltService.CurrentVPosition();
-                        lastX=0;
-                        lastY=0;
-                        lastRelXPos=0;
-                        lastRelYPos=0;
-                        framesSinceLastDetection=0;
-                    }
-                    else
-                        framesSinceLastDetection++;
-                }
-                // Cv2.Resize(srcImage,srcImage, new Size(640,480));
-                window.ShowImage(srcImage);
+
+                Cv2.ImShow("Video",frame);
                 int key = Cv2.WaitKey(1);
                 if (key == 27)
                 {
@@ -147,6 +116,8 @@ if (panTiltService!=null)
                 logger.LogError("Error reading frame");
         }
     }
+
+    Cv2.DestroyAllWindows();
 }
 
 
