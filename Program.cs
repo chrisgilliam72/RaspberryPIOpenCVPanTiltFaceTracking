@@ -16,12 +16,13 @@ using Microsoft.Extensions.Logging;
 const int FRAME_W = 320;
 const int FRAME_H = 200;
 int cam_pan = 130;
-int cam_tilt= 65;
+int cam_tilt= 100;
 
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostcontext, services) =>
     {
         services.AddSingleton<IPanTiltService,PanTiltService>();   
+        services.AddSingleton<IVideoCaptureFactory, GStreamerVideoCaptureFactory>(); // Register the factory
         services.AddLogging(configure => configure.AddConsole()); // Add console logging
     }).Build();
 
@@ -30,6 +31,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 var panTiltService= host.Services.GetService<IPanTiltService>();
 var logger = host.Services.GetRequiredService<ILogger<Program>>(); // Get logger instance
+var  videoCaptureFactory = host.Services.GetRequiredService<IVideoCaptureFactory>(); // Get the factory instance
 logger.LogInformation("Initialising...");
 if (panTiltService!=null)
 {
@@ -38,23 +40,15 @@ if (panTiltService!=null)
 
     var cascade = new CascadeClassifier(@"./Data/lbpcascade_frontalface.xml");
 
+    var capture=videoCaptureFactory.CreateVideoCapture(FRAME_W, FRAME_H);
 
-    // To use libcamera install gstreamer and use this.
-    using var capture = new VideoCapture(
-        "libcamerasrc ! video/x-raw,format=RGB,width=320,height=200 ! videoconvert ! appsink", 
-        VideoCaptureAPIs.GSTREAMER
-    );
-    // using(VideoCapture capture = new VideoCapture(0))
    
     using(var frame = new Mat())
     using(var gray = new Mat())
     {
 
-        capture.Set(VideoCaptureProperties.FrameWidth, 320);
-        capture.Set(VideoCaptureProperties.FrameHeight, 200);
         Thread.Sleep(2000);
-        while (capture.IsOpened())
-
+        while (capture.IsOpened)
         {
 
             if (capture.Read(frame))
