@@ -1,0 +1,1 @@
+public record struct DetectionRectangle(int X, int Y, int Width, int Height);
